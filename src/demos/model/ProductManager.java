@@ -6,57 +6,65 @@ package demos.model;
 
 import demos.db.Product;
 import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
-import javax.persistence.Query;
-import javax.validation.Valid;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.ejb.EJB;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 
 /**
  *
- * @author cristina
- * JPA Controller class
+ * @author cristina EJB Client
  */
 public class ProductManager {
-    private EntityManager em;
-    private Query productNameQuery;
-    
-    public ProductManager(String persistenceUnit){
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory(persistenceUnit);
-        em = emf.createEntityManager();
-        
-        productNameQuery = em.createNamedQuery("Product.findByName");
+
+    private static final Logger LOG = Logger.getLogger(ProductManager.class.getName());
+
+    // Instancia a la fachada 
+    private ProductFacadeRemote productFacade;
+
+    public ProductManager() {
+        //EJB
+        try {
+            // sin .properties
+            Properties props = new Properties();
+            props.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.enterprise.naming.SerialInitContextFactory");
+            //props.setProperty("org.omg.CORBA.ORBInitialHost", "localhost");
+             //glassfish default port value will be 3700,
+            //props.setProperty("org.omg.CORBA.ORBInitialPort", "4848");
+            Context ctx = new InitialContext(props);
+            productFacade = (ProductFacadeRemote) ctx.lookup("java:global/ProductApp/ProductApp-ejb/"
+                    + "ProductFacade!demos.model.ProductFacadeRemote");
+
+            //CON .PROPERTIES. 
+//            Context ctx = new InitialContext();
+//            productFacade = (ProductFacadeRemote) ctx.lookup("java:global/ProductApp/ProductApp-ejb/"
+//                    + "ProductFacade!demos.model.ProductFacadeRemote");
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Error initialising EJB reference", ex);
+        }
     }
-    
-    public void closeEntityManager(){
-        em.close();
+
+    // Practica 4
+    public void create(Product product) {
+        productFacade.create(product);
     }
-    
-    public void create(@Valid Product product){
-        em.getTransaction().begin();
-        em.persist(product);
-        em.getTransaction().commit();
+
+    public void update(Product product) {
+        productFacade.update(product);
     }
-    
-    public void update(@Valid Product product){
-        em.getTransaction().begin();
-        product = em.merge(product);
-        em.getTransaction().commit();
+
+    public void delete(Product product) {
+        productFacade.delete(product);
     }
-    
-    public void delete(Product product){
-        em.getTransaction().begin();
-        em.remove(product);
-        em.getTransaction().commit();
+
+    public Product findProduct(Integer id) {
+        return productFacade.findProduct(id);
     }
-    
-    public Product findProduct(Integer id){
-        return em.find(Product.class, id);
+
+    public List<Product> findProductByName(String name) {
+        return productFacade.findProductByName(name);
     }
-    
-    public List<Product> findProductByName(String name){
-        productNameQuery.setParameter("name", name);
-        return productNameQuery.getResultList();
-    }
-    
+
 }
